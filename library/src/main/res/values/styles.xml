@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 普通弹出方式的对话框主题 -->
+    <style name="dialog_normal" parent="@android:style/Theme.Dialog">
+        <item name="android:windowNoTitle">true</item>
+
+        <!-- 背景透明 -->
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <!-- Dialog以外的区域模糊效果 -->
+        <item name="android:backgroundDimEnabled">true</item>
+
+        <item name="android:padding">0dp</item>
+        <item name="android:layout_margin">0dp</item>
+    </style>
+
+    <!-- LoadingDialog 普通弹出方式的对话框主题 -->
+    <style name="loading_dialog_normal" parent="dialog_normal">
+        <!-- Dialog以外的区域模糊效果 -->
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
+
+</resources>
