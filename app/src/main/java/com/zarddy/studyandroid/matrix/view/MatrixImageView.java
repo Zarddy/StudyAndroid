@@ -113,9 +113,9 @@ public class MatrixImageView extends View {
     /**
      * 用于缩放，旋转的控制点的坐标
      */
-    private Point mControlPoint = new Point();
     private Point mLTControllerPoint = new Point(); // 左上角控制点
     private Point mLBControllerPoint = new Point(); // 左下角控制点
+    private Point mRTControllerPoint = new Point(); // 右上角控制点
     private Point mRBControllerPoint = new Point(); // 右下角控制点
 
     /**
@@ -188,12 +188,6 @@ public class MatrixImageView extends View {
      */
     private int offsetY;
 
-    /**
-     * 控制图标所在的位置（比如左上，右上，左下，右下）
-     */
-//    private int controlLocation = DEFAULT_CONTROL_LOCATION;
-
-
     public MatrixImageView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
@@ -228,7 +222,6 @@ public class MatrixImageView extends View {
         mScale = mTypedArray.getFloat(R.styleable.MatrixImageView_scale, DEFAULT_SCALE);
         mDegree = mTypedArray.getFloat(R.styleable.MatrixImageView_degree, DEFAULT_DEGREE);
         controlDrawable = mTypedArray.getDrawable(R.styleable.MatrixImageView_controlDrawable);
-//        controlLocation = mTypedArray.getInt(R.styleable.MatrixImageView_controlLocation, DEFAULT_CONTROL_LOCATION);
         isEditable = mTypedArray.getBoolean(R.styleable.MatrixImageView_editable, DEFAULT_EDITABLE);
 
         mTypedArray.recycle();
@@ -385,16 +378,16 @@ public class MatrixImageView extends View {
                             / 2, mLBControllerPoint.y + mDrawableHeight / 2);
             controlDrawable.draw(canvas);
 
+            // 右上角
+            controlDrawable.setBounds(mRTControllerPoint.x - mDrawableWidth / 2,
+                    mRTControllerPoint.y - mDrawableHeight / 2, mRTControllerPoint.x + mDrawableWidth
+                            / 2, mRTControllerPoint.y + mDrawableHeight / 2);
+            controlDrawable.draw(canvas);
+
             // 右下角
             controlDrawable.setBounds(mRBControllerPoint.x - mDrawableWidth / 2,
                     mRBControllerPoint.y - mDrawableHeight / 2, mRBControllerPoint.x + mDrawableWidth
                             / 2, mRBControllerPoint.y + mDrawableHeight / 2);
-            controlDrawable.draw(canvas);
-
-            // TODO 原来的点，右上角
-            controlDrawable.setBounds(mControlPoint.x - mDrawableWidth / 2,
-                    mControlPoint.y - mDrawableHeight / 2, mControlPoint.x + mDrawableWidth
-                            / 2, mControlPoint.y + mDrawableHeight / 2);
             controlDrawable.draw(canvas);
         }
 
@@ -567,12 +560,10 @@ public class MatrixImageView extends View {
         mRBPoint.y += (offsetY + halfDrawableHeight);
         mLBPoint.y += (offsetY + halfDrawableHeight);
 
-//        mControlPoint = LocationToPoint(controlLocation);
-        mControlPoint = LocationToPoint(RIGHT_TOP);
-
         mLTControllerPoint = LocationToPoint(LEFT_TOP);
         mLBControllerPoint = LocationToPoint(LEFT_BOTTOM);
-        mRBControllerPoint = LocationToPoint(RIGHT_TOP);
+        mRTControllerPoint = LocationToPoint(RIGHT_TOP);
+        mRBControllerPoint = LocationToPoint(RIGHT_BOTTOM);
     }
 
 
@@ -714,7 +705,7 @@ public class MatrixImageView extends View {
      */
     private int JudgeStatus(float x, float y){
         PointF touchPoint = new PointF(x, y);
-        PointF controlPointF = new PointF(mControlPoint);
+        PointF controlPointF = new PointF(mRTControllerPoint);
 
         //点击的点到控制旋转，缩放点的距离
         float distanceToControl = distance4PointF(touchPoint, controlPointF);
@@ -798,20 +789,6 @@ public class MatrixImageView extends View {
         invalidate();
     }
 
-    /**
-     * 设置控制图标的位置, 设置的值只能选择LEFT_TOP ，RIGHT_TOP， RIGHT_BOTTOM，LEFT_BOTTOM
-     */
-//    public void setControlLocation(int location) {
-//        if(this.controlLocation == location)
-//            return;
-//        this.controlLocation = location;
-//        transformDraw();
-//    }
-//
-//    public int getControlLocation() {
-//        return controlLocation;
-//    }
-
     public PointF getCenterPoint() {
         return mCenterPoint;
     }
@@ -832,7 +809,7 @@ public class MatrixImageView extends View {
 
     /**
      * 设置是否处于可缩放，平移，旋转状态
-     * @param isEditable
+     * @param isEditable 是否显示控制点
      */
     public void setEditable(boolean isEditable) {
         this.isEditable = isEditable;

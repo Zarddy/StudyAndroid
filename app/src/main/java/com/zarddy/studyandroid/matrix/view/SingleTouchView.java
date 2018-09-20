@@ -190,12 +190,6 @@ public class SingleTouchView extends View {
      */
     private int offsetY;
 
-    /**
-     * 控制图标所在的位置（比如左上，右上，左下，右下）
-     */
-    private int controlLocation = DEFAULT_CONTROL_LOCATION;
-
-
     public SingleTouchView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
@@ -231,7 +225,6 @@ public class SingleTouchView extends View {
         mScale = mTypedArray.getFloat(R.styleable.MatrixImageView_scale, DEFAULT_SCALE);
         mDegree = mTypedArray.getFloat(R.styleable.MatrixImageView_degree, DEFAULT_DEGREE);
         controlDrawable = mTypedArray.getDrawable(R.styleable.MatrixImageView_controlDrawable);
-        controlLocation = mTypedArray.getInt(R.styleable.MatrixImageView_controlLocation, DEFAULT_CONTROL_LOCATION);
         isEditable = mTypedArray.getBoolean(R.styleable.MatrixImageView_editable, DEFAULT_EDITABLE);
 
         mTypedArray.recycle();
@@ -552,7 +545,7 @@ public class SingleTouchView extends View {
         mRBPoint.y += (offsetY + halfDrawableHeight);
         mLBPoint.y += (offsetY + halfDrawableHeight);
 
-        mControlPoint = LocationToPoint(controlLocation);
+        mControlPoint = LocationToPoint(RIGHT_TOP);
     }
 
 
@@ -789,22 +782,6 @@ public class SingleTouchView extends View {
         mPaint.setStrokeWidth(frameWidth);
         invalidate();
     }
-
-    /**
-     * 设置控制图标的位置, 设置的值只能选择LEFT_TOP ，RIGHT_TOP， RIGHT_BOTTOM，LEFT_BOTTOM
-     */
-    public void setControlLocation(int location) {
-        if(this.controlLocation == location)
-            return;
-        this.controlLocation = location;
-        transformDraw();
-    }
-
-    public int getControlLocation() {
-        return controlLocation;
-    }
-
-
 
     public PointF getCenterPoint() {
         return mCenterPoint;

@@ -56,6 +56,8 @@ public class MatrixActivity extends BaseActivity {
      */
     private void startChange() {
         LogUtils.i("开始变形 . . . . ");
+
+        imageView.setEditable(true);
     }
 
     /**
@@ -63,5 +65,7 @@ public class MatrixActivity extends BaseActivity {
      */
     private void endChange() {
         LogUtils.i("取消变形 . . . . ");
+
+        imageView.setEditable(false);
     }
 }

@@ -10,12 +10,6 @@
         <attr name="degree" format="float" />             <!-- 旋转角度 -->
         <attr name="scale" format="float" />              <!-- 缩放比例 -->
         <attr name="controlDrawable" format="reference"/> <!-- 控制图标 -->
-        <attr name="controlLocation">                     <!-- 控制图标的位置 -->
-            <enum name="left_top" value="0" />
-            <enum name="right_top" value="1" />
-            <enum name="right_bottom" value="2" />
-            <enum name="left_bottom" value="3" />
-        </attr>
     </declare-styleable>
 
 </resources>
