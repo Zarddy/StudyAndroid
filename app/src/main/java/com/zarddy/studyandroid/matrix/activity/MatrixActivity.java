@@ -6,12 +6,18 @@ import com.zarddy.library.base.BaseActivity;
 import com.zarddy.library.util.LogUtils;
 import com.zarddy.studyandroid.R;
 import com.zarddy.studyandroid.matrix.view.MatrixImageView;
-import com.zarddy.studyandroid.matrix.view.SingleTouchView;
 
 import butterknife.BindView;
 
 /**
  * TODO 显示可变形ImageView的界面
+ * <p>
+ *     <h3>参考文章</h3>
+ *     <dl>
+ *         <dt>Android 图片随着手势缩放，平移，并且支持多点触控</dt>
+ *         <dt>https://blog.csdn.net/lijinweii/article/details/77717540</dt>
+ *     </dl>
+ * </p>
  */
 public class MatrixActivity extends BaseActivity {
 
