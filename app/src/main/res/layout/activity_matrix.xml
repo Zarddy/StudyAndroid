@@ -18,6 +18,7 @@
             android:layout_height="wrap_content"
             android:layout_margin="30dp"
             android:background="#97eab9"
+            android:src="@drawable/pic1"
             app:src="@drawable/pic1"
             app:controlDrawable="@drawable/shape_white_circle"/>
 
