@@ -19,7 +19,6 @@ import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
@@ -28,7 +27,6 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.zarddy.library.util.LogUtils;
-import com.zarddy.library.util.ScreenUtils;
 import com.zarddy.studyandroid.R;
 
 /**
@@ -68,8 +66,6 @@ public class MatrixImageView extends View {
     public static final boolean DEFAULT_EDITABLE = true;
     public static final int DEFAULT_OTHER_DRAWABLE_WIDTH = 50;
     public static final int DEFAULT_OTHER_DRAWABLE_HEIGHT = 50;
-
-
 
     /**
      * 用于旋转缩放的Bitmap
@@ -111,21 +107,13 @@ public class MatrixImageView extends View {
     private int mViewPaddingTop;
 
     /**
-     * 图片四个点坐标
+     * 图片四个点坐标，用于缩放，旋转的控制点的坐标
      */
     private Point mLTPoint;
     private Point mRTPoint;
     private Point mRBPoint;
     private Point mLBPoint;
     private List<Point> mControllerPoints = new ArrayList<>();
-
-    /**
-     * 用于缩放，旋转的控制点的坐标
-     */
-//    private Point mLTControllerPoint = new Point(); // 左上角控制点
-//    private Point mLBControllerPoint = new Point(); // 左下角控制点
-//    private Point mRTControllerPoint = new Point(); // 右上角控制点
-//    private Point mRBControllerPoint = new Point(); // 右下角控制点
 
     /**
      * 用于缩放，旋转的图标
@@ -191,6 +179,9 @@ public class MatrixImageView extends View {
      * 图片在旋转时y方向的偏移量
      */
     private int offsetY;
+
+    private PointF mFirstOriginalPoint = new PointF();
+    private PointF mSecondOriginalPoint = new PointF();
 
     public MatrixImageView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
@@ -260,9 +251,6 @@ public class MatrixImageView extends View {
         if(null != mViewGroup){
             int parentWidth = mViewGroup.getWidth();
             int parentHeight = mViewGroup.getHeight();
-
-            LogUtils.i("onMeasure . . parentWidth：" + (parentWidth/2) + " . parentHeight：" + (parentHeight/2) );
-
             mCenterPoint.set(parentWidth/2, parentHeight/2);
         }
     }
@@ -286,7 +274,6 @@ public class MatrixImageView extends View {
         this.layout(newPaddingLeft, newPaddingTop, newPaddingLeft + actualWidth, newPaddingTop + actualHeight);
     }
 
-
     /**
      * 设置旋转图
      * @param bitmap
@@ -295,7 +282,6 @@ public class MatrixImageView extends View {
         this.mBitmap = bitmap;
         transformDraw(mCurDegree);
     }
-
 
     /**
      * 设置旋转图
@@ -363,33 +349,6 @@ public class MatrixImageView extends View {
             canvas.drawPath(mPath, mPaint);
             //画旋转, 缩放图标
 
-//            // 左上角
-//            controlDrawable.setBounds(mLTControllerPoint.x - mDrawableWidth / 2,
-//                    mLTControllerPoint.y - mDrawableHeight / 2, mLTControllerPoint.x + mDrawableWidth
-//                            / 2, mLTControllerPoint.y + mDrawableHeight / 2);
-//            controlDrawable.draw(canvas);
-//
-//            // 左下角
-//            controlDrawable.setBounds(mLBControllerPoint.x - mDrawableWidth / 2,
-//                    mLBControllerPoint.y - mDrawableHeight / 2, mLBControllerPoint.x + mDrawableWidth
-//                            / 2, mLBControllerPoint.y + mDrawableHeight / 2);
-//            controlDrawable.draw(canvas);
-//
-//            // 右上角
-//            controlDrawable.setBounds(mRTControllerPoint.x - mDrawableWidth / 2,
-//                    mRTControllerPoint.y - mDrawableHeight / 2, mRTControllerPoint.x + mDrawableWidth
-//                            / 2, mRTControllerPoint.y + mDrawableHeight / 2);
-//            controlDrawable.draw(canvas);
-//
-//            // 右下角
-//            controlDrawable.setBounds(mRBControllerPoint.x - mDrawableWidth / 2,
-//                    mRBControllerPoint.y - mDrawableHeight / 2, mRBControllerPoint.x + mDrawableWidth
-//                            / 2, mRBControllerPoint.y + mDrawableHeight / 2);
-//            controlDrawable.draw(canvas);
-
-
-
-
             // 左上角
             controlDrawable.setBounds(mLTPoint.x - mDrawableWidth / 2,
                     mLTPoint.y - mDrawableHeight / 2,
@@ -425,7 +384,8 @@ public class MatrixImageView extends View {
     /**
      * 设置Matrix, 强制刷新
      */
-    private void transformDraw(float degree){
+    public void transformDraw(float degree){
+
         if(mBitmap == null) return;
         int bitmapWidth = (int)(mBitmap.getWidth() * mScale);
         int bitmapHeight = (int)(mBitmap.getHeight()* mScale);
@@ -441,10 +401,6 @@ public class MatrixImageView extends View {
         adjustLayout();
     }
 
-    private float mTwoPointsOriginalDistance = 0; // 两个触点初始距离
-    private PointF mFirstOriginalPoint = new PointF();
-    private PointF mSecondOriginalPoint = new PointF();
-
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if(!isEditable){
@@ -454,107 +410,68 @@ public class MatrixImageView extends View {
         switch (event.getAction() & MotionEvent.ACTION_MASK) {
             // 主点
             case MotionEvent.ACTION_DOWN:
-
-                LogUtils.i("onTouchEvent . . ACTION_DOWN . . . mViewPaddingLeft：" + (event.getX() + mViewPaddingLeft) + " . mViewPaddingTop：" + (event.getY() + mViewPaddingTop) );
-
-                mPreMovePointF.set(event.getX() + mViewPaddingLeft, event.getY() + mViewPaddingTop);
-
+                mPreMovePointF.set(getTheFirstTouchPoint(event));
                 // 第一个触点原始位置
-                mFirstOriginalPoint.set(event.getX() + mViewPaddingLeft, event.getY() + mViewPaddingTop);
-
+                mFirstOriginalPoint.set(getTheFirstTouchPoint(event));
                 mStatus = JudgeStatus(event); // 判断当前的控制状态
-
-
-                LogUtils.i("onTouchEvent . . ACTION_DOWN . . . getX：" + event.getX() + " . getY：" + event.getY() );
-
                 break;
 
             // 副点
             case MotionEvent.ACTION_POINTER_DOWN:
-
-                LogUtils.i("onTouchEvent . . ACTION_POINTER_DOWN . . . getX：" + event.getX() + " . getY：" + event.getY() );
-
                 // 第二个触点原始位置
-                mSecondOriginalPoint.set(event.getX() + mViewPaddingLeft, event.getY() + mViewPaddingTop);
-
-
+                mSecondOriginalPoint.set(getTheSecondTouchPoint(event));
                 mStatus = JudgeStatus(event); // 判断当前的控制状态
-
-                // 当副点点下时，应该记录第一二个点初次距离
-                mTwoPointsOriginalDistance = getTwoPointsDistance(event);
-
                 break;
 
             case MotionEvent.ACTION_UP:
                 mStatus = STATUS_INIT;
                 break;
 
-            case MotionEvent.ACTION_POINTER_UP:
-                mTwoPointsOriginalDistance = 0;
-                mStatus = STATUS_DRAG;
-                break;
-
             case MotionEvent.ACTION_MOVE:
-                mCurMovePointF.set(event.getX() + mViewPaddingLeft, event.getY() + mViewPaddingTop);
+                mCurMovePointF.set(getTheFirstTouchPoint(event));
 
-
-                // 第一个触点的坐标
-                PointF firstTouchPoint = new PointF(event.getX() + mViewPaddingLeft, event.getY() + mViewPaddingTop);
                 if (mStatus == STATUS_ROTATE_ZOOM) {
+                    // 第二个触点的坐标
+                    PointF touchPoint2 = getTheSecondTouchPoint(event);
+                    if (touchPoint2 == null) {
+                        return super.onTouchEvent(event);
+                    }
 
-                    if (mTwoPointsOriginalDistance <= 0) {
+                    float twoPointsOriginalDistance = distance4PointF(mSecondOriginalPoint, touchPoint2);
+
+                    if (twoPointsOriginalDistance <= 10) {
                         return super.onTouchEvent(event);
                     }
 
                     // 缩放
-//                    int halfBitmapWidth = mBitmap.getWidth() / 2;
-//                    int halfBitmapHeight = mBitmap.getHeight() /2 ;
-//
-//                    //图片某个点到图片中心的距离
-//                    float bitmapToCenterDistance = (float)Math.sqrt(halfBitmapWidth * halfBitmapWidth + halfBitmapHeight * halfBitmapHeight);
-//                    // 第一个触点和第二个触点移动后的距离
-//                    float twoPointsMovedDistance = getTwoPointsDistance(event);
-//
-//                    float s = Math.abs(mTwoPointsOriginalDistance - twoPointsMovedDistance);
-//
+                    int halfBitmapWidth = mBitmap.getWidth() / 2;
+                    int halfBitmapHeight = mBitmap.getHeight() /2 ;
+
+                    //图片某个点到图片中心的距离
+                    float bitmapToCenterDistance = (float)Math.sqrt(halfBitmapWidth * halfBitmapWidth + halfBitmapHeight * halfBitmapHeight);
+                    // 第一个触点和第二个触点移动后的距离
+                    float twoPointsMovedDistance = getTwoPointsDistance(event);
+
+//                    float s = Math.abs(twoPointsOriginalDistance - twoPointsMovedDistance);
 //                    LogUtils.i("移动后的差距 。 。 " + s);
-//
-//                    //计算缩放比例
-////                    scale = s / bitmapToCenterDistance;
-//
-//                    mScale = twoPointsMovedDistance / bitmapToCenterDistance;
-////                    mScale = twoPointsMovedDistance / mTwoPointsOriginalDistance;
-//
-//                    LogUtils.i("缩放率 . . . . " + mScale);
+
+                    //计算缩放比例
+//                    scale = s / bitmapToCenterDistance;
+                    mScale = twoPointsMovedDistance / bitmapToCenterDistance;
+//                    mScale = twoPointsMovedDistance / mTwoPointsOriginalDistance;
 
 
                     //缩放比例的界限判断
-//                    if (mScale <= MIN_SCALE) {
-//                        mScale = MIN_SCALE;
-//                    } else if (mScale >= MAX_SCALE) {
-//                        mScale = MAX_SCALE;
-//                    }
-
-
-
-
-
-
-                    // 第二个触点的坐标
-                    float x2 = event.getX(1);
-                    float y2 = event.getY(1);
-                    PointF touchPoint2 = new PointF(x2, y2);
+                    if (mScale <= MIN_SCALE) {
+                        mScale = MIN_SCALE;
+                    } else if (mScale >= MAX_SCALE) {
+                        mScale = MAX_SCALE;
+                    }
 
                     // 角度
                     double a = distance4PointF(mCenterPoint, mSecondOriginalPoint);
                     double b = distance4PointF(mSecondOriginalPoint, touchPoint2);
                     double c = distance4PointF(mCenterPoint, touchPoint2);
-
-                    LogUtils.i("#########################################");
-                    LogUtils.i("中心点 ~ 初始第二点，距离：" + a);
-                    LogUtils.i("初始第二点 ~ 第二点，距离：" + b);
-                    LogUtils.i("中心点 ~ 第二点，距离：" + c);
-                    LogUtils.i("#########################################");
 
                     double cosb = (a * a + c * c - b * b) / (2 * a * c);
 
@@ -576,93 +493,14 @@ public class MatrixImageView extends View {
                         newDegree = -newDegree;
                     }
 
-                    mCurDegree = mOriginalDegree + newDegree;
-
-                    LogUtils.i("rotate", "旋转方向：" + ( (result < 0 ? "逆时针" : "顺时针") ));
-                    LogUtils.i("rotate", "degree：" + mCurDegree);
-
-
-                    LogUtils.i("allRotate", "########################################");
-                    LogUtils.i("allRotate", "");
-                    LogUtils.i("allRotate", "mCenterPoint.x：" + mCenterPoint.x + " . . mCenterPoint.y：" + mCenterPoint.y);
-                    LogUtils.i("allRotate", "mSecondOriginalPoint.x：" + mSecondOriginalPoint.x + " . . mSecondOriginalPoint.y：" + mSecondOriginalPoint.y);
-                    LogUtils.i("allRotate", "touchPoint2.x：" + touchPoint2.x + " . . touchPoint2.y：" + touchPoint2.y);
-                    LogUtils.i("allRotate", "");
-                    LogUtils.i("allRotate", "两点间距离，a：" + a);
-                    LogUtils.i("allRotate", "两点间距离，b：" + b);
-                    LogUtils.i("allRotate", "两点间距离，c：" + c);
-                    LogUtils.i("allRotate", "newDegree：" + newDegree);
-                    LogUtils.i("allRotate", "mCurDegree：" + mCurDegree);
-                    LogUtils.i("allRotate", "旋转方向：" + ( (result < 0 ? "逆时针" : "顺时针") ));
-                    LogUtils.i("allRotate", "");
-                    LogUtils.i("allRotate", "########################################");
+                    mCurDegree += newDegree;
+                    mSecondOriginalPoint.set(touchPoint2);
 
                     transformDraw(mCurDegree);
 
-
-
-
-
-
-
-
-
-
-//                    float scale = 1f;
-//
-//                    int halfBitmapWidth = mBitmap.getWidth() / 2;
-//                    int halfBitmapHeight = mBitmap.getHeight() /2 ;
-//
-//                    //图片某个点到图片中心的距离
-//                    float bitmapToCenterDistance = (float)Math.sqrt(halfBitmapWidth * halfBitmapWidth + halfBitmapHeight * halfBitmapHeight);
-//
-//                    //移动的点到图片中心的距离
-//                    float moveToCenterDistance = distance4PointF(mCenterPoint, mCurMovePointF);
-//
-//                    //计算缩放比例
-//                    scale = moveToCenterDistance / bitmapToCenterDistance;
-//
-//
-//                    //缩放比例的界限判断
-//                    if (scale <= MIN_SCALE) {
-//                        scale = MIN_SCALE;
-//                    } else if (scale >= MAX_SCALE) {
-//                        scale = MAX_SCALE;
-//                    }
-//
-//                    // 角度
-//                    double a = distance4PointF(mCenterPoint, mPreMovePointF);
-//                    double b = distance4PointF(mPreMovePointF, mCurMovePointF);
-//                    double c = distance4PointF(mCenterPoint, mCurMovePointF);
-//
-//                    double cosb = (a * a + c * c - b * b) / (2 * a * c);
-//
-//                    if (cosb >= 1) {
-//                        cosb = 1f;
-//                    }
-//
-//                    double radian = Math.acos(cosb);
-//                    float newDegree = (float) radianToDegree(radian);
-//
-//                    //center -> proMove的向量， 我们使用PointF来实现
-//                    PointF centerToProMove = new PointF((mPreMovePointF.x - mCenterPoint.x), (mPreMovePointF.y - mCenterPoint.y));
-//
-//                    //center -> curMove 的向量
-//                    PointF centerToCurMove = new PointF((mCurMovePointF.x - mCenterPoint.x), (mCurMovePointF.y - mCenterPoint.y));
-//
-//                    //向量叉乘结果, 如果结果为负数， 表示为逆时针， 结果为正数表示顺时针
-//                    float result = centerToProMove.x * centerToCurMove.y - centerToProMove.y * centerToCurMove.x;
-//
-//                    if (result < 0) {
-//                        newDegree = -newDegree;
-//                    }
-//
-//                    mDegree = mDegree + newDegree;
-//                    mScale = scale;
-//
-//                    transformDraw();
-
                 } else if (mStatus == STATUS_DRAG) {
+                    // 第一个触点的坐标
+                    PointF firstTouchPoint = getTheFirstTouchPoint(event);
                     // 修改中心点
                     mCenterPoint.x += firstTouchPoint.x - mFirstOriginalPoint.x;
                     mCenterPoint.y += firstTouchPoint.y - mFirstOriginalPoint.y;
@@ -676,8 +514,6 @@ public class MatrixImageView extends View {
         }
         return true;
     }
-
-
 
     /**
      * 获取四个点和View的大小
@@ -740,11 +576,6 @@ public class MatrixImageView extends View {
         mRTPoint.y += (offsetY + halfDrawableHeight);
         mRBPoint.y += (offsetY + halfDrawableHeight);
         mLBPoint.y += (offsetY + halfDrawableHeight);
-
-//        mLTControllerPoint = LocationToPoint(LEFT_TOP);
-//        mLBControllerPoint = LocationToPoint(LEFT_BOTTOM);
-//        mRTControllerPoint = LocationToPoint(RIGHT_TOP);
-//        mRBControllerPoint = LocationToPoint(RIGHT_BOTTOM);
     }
 
 
@@ -766,7 +597,6 @@ public class MatrixImageView extends View {
         return mLTPoint;
     }
 
-
     /**
      * 获取变长参数最大的值
      * @param array
@@ -778,7 +608,6 @@ public class MatrixImageView extends View {
         return list.get(list.size() -1);
     }
 
-
     /**
      * 获取变长参数最大的值
      * @param array
@@ -789,8 +618,6 @@ public class MatrixImageView extends View {
         Collections.sort(list);
         return list.get(0);
     }
-
-
 
     /**
      * 获取旋转某个角度之后的点
@@ -884,43 +711,22 @@ public class MatrixImageView extends View {
      */
     private int JudgeStatus(MotionEvent event){
 
-
         // 第一个触点的坐标
-        float x = event.getX();
-        float y = event.getY();
-        PointF touchPoint = new PointF(x, y);
+        PointF touchPoint = getTheFirstTouchPoint(event);
 
         // 如果第一个触点点击了变形控制点
         if (isTransformable && isTouchControllerPoint(touchPoint)) {
             return STATUS_TRANSFORM; // 状态改为可变形，扭曲
         }
 
-        if (event.getPointerCount() >= 2) {
-
-
-            // 第二个触点的坐标
-            float x2 = event.getX(1);
-            float y2 = event.getY(1);
-            PointF touchPoint2 = new PointF(x2, y2);
-
-//            LogUtils.i("第一个触点的坐标，x：" + x + " . y：" + y + " . 第二个触点的坐标，x2：" + x2 + " . y2：" + y2);
-//            LogUtils.i("两个触点间的距离：" + distance4PointF(touchPoint, touchPoint2));
-
+        // 第二个触点的坐标
+        PointF touchPoint2 = getTheSecondTouchPoint(event);
+        if (touchPoint2 != null) {
             // 如果两个连续触点距离大于10，则认为是缩放状态
             if (distance4PointF(touchPoint, touchPoint2) >= 10) {
                 return STATUS_ROTATE_ZOOM; // 状态改为可变形，扭曲
             }
         }
-
-////        PointF controlPointF = new PointF(mRTControllerPoint);
-//        PointF controlPointF = new PointF(mRTPoint);
-//        //点击的点到控制旋转，缩放点的距离
-//        float distanceToControl = distance4PointF(touchPoint, controlPointF);
-//
-//        //如果两者之间的距离小于 控制图标的宽度，高度的最小值，则认为点中了控制图标
-//        if(distanceToControl < Math.min(mDrawableWidth/2, mDrawableHeight/2)){
-//            return STATUS_ROTATE_ZOOM;
-//        }
 
         return STATUS_DRAG;
     }
@@ -1064,15 +870,40 @@ public class MatrixImageView extends View {
      * @return
      */
     private float getTwoPointsDistance(MotionEvent event) {
-        // 第一个触点的坐标
-        float x = event.getX();
-        float y = event.getY();
-        PointF touchPoint = new PointF(x, y);
         // 第二个触点的坐标
-        float x2 = event.getX(1);
-        float y2 = event.getY(1);
-        PointF touchPoint2 = new PointF(x2, y2);
+        PointF touchPoint2 = getTheSecondTouchPoint(event);
+        if (touchPoint2 == null) {
+            return 0;
+        }
+
+        // 第一个触点的坐标
+        PointF touchPoint = getTheFirstTouchPoint(event);
 
         return distance4PointF(touchPoint, touchPoint2);
+    }
+
+    /**
+     * 获取第一个触点的坐标
+     * @param event touch事件
+     */
+    private PointF getTheFirstTouchPoint(MotionEvent event) {
+        float x2 = event.getX() + mViewPaddingLeft;
+        float y2 = event.getY() + mViewPaddingTop;
+        return new PointF(x2, y2);
+    }
+
+    /**
+     * 获取第二个触点的坐标
+     * @param event touch事件
+     */
+    private PointF getTheSecondTouchPoint(MotionEvent event) {
+        if (event.getPointerCount() < 2) {
+            return null;
+        }
+
+        // 触点的坐标
+        float x2 = event.getX(1) + mViewPaddingLeft;
+        float y2 = event.getY(1) + mViewPaddingTop;
+        return new PointF(x2, y2);
     }
 }
