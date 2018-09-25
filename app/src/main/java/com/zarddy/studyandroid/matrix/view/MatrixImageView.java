@@ -24,9 +24,9 @@ import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 
 import com.zarddy.library.util.LogUtils;
+import com.zarddy.library.util.ScreenUtils;
 import com.zarddy.studyandroid.R;
 
 /**
@@ -123,7 +123,7 @@ public class MatrixImageView extends View {
     /**
      * 缩放，旋转图标的宽和高
      */
-    private int mDrawableWidth, mDrawableHeight;
+    private int mControllerDrawableWidth, mControllerDrawableHeight;
 
     /**
      * 画外围框的Path
@@ -163,7 +163,7 @@ public class MatrixImageView extends View {
      * 是否处于可以缩放，平移，旋转状态
      */
     private boolean isEditable = DEFAULT_EDITABLE;
-    private boolean isTransformable = false; // 是否可变形
+    private boolean isTransformable = true; // 是否可变形
 
     private DisplayMetrics metrics;
 
@@ -223,7 +223,7 @@ public class MatrixImageView extends View {
         mTypedArray.recycle();
     }
 
-
+    // 初始化控件
     private void init(){
         mPaint = new Paint();
         mPaint.setAntiAlias(true);
@@ -235,33 +235,28 @@ public class MatrixImageView extends View {
             controlDrawable = getContext().getResources().getDrawable(R.drawable.shape_white_circle);
         }
 
-        mDrawableWidth = controlDrawable.getIntrinsicWidth();
-        mDrawableHeight = controlDrawable.getIntrinsicHeight();
+        mControllerDrawableWidth = controlDrawable.getIntrinsicWidth();
+        mControllerDrawableHeight = controlDrawable.getIntrinsicHeight();
 
         transformDraw(mCurDegree);
     }
 
-
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-
-        //获取SingleTouchView所在父布局的中心点
-        ViewGroup mViewGroup = (ViewGroup) getParent();
-        if(null != mViewGroup){
-            int parentWidth = mViewGroup.getWidth();
-            int parentHeight = mViewGroup.getHeight();
-            mCenterPoint.set(parentWidth/2, parentHeight/2);
-        }
+        // 将屏幕中点坐标设置为控件中点
+        mCenterPoint.set(
+                ScreenUtils.getScreenWidth(getContext()) / 2,
+                ScreenUtils.getScreenHeight(getContext()) / 2
+        );
     }
-
 
     /**
      * 调整View的大小，位置
      */
     private void adjustLayout(){
-        int actualWidth = mViewWidth + mDrawableWidth;
-        int actualHeight = mViewHeight + mDrawableHeight;
+        int actualWidth = mViewWidth + mControllerDrawableWidth;
+        int actualHeight = mViewHeight + mControllerDrawableHeight;
 
         int newPaddingLeft = (int) (mCenterPoint.x - actualWidth /2);
         int newPaddingTop = (int) (mCenterPoint.y - actualHeight/2);
@@ -350,31 +345,31 @@ public class MatrixImageView extends View {
             //画旋转, 缩放图标
 
             // 左上角
-            controlDrawable.setBounds(mLTPoint.x - mDrawableWidth / 2,
-                    mLTPoint.y - mDrawableHeight / 2,
-                    mLTPoint.x + mDrawableWidth / 2,
-                    mLTPoint.y + mDrawableHeight / 2);
+            controlDrawable.setBounds(mLTPoint.x - mControllerDrawableWidth / 2,
+                    mLTPoint.y - mControllerDrawableHeight / 2,
+                    mLTPoint.x + mControllerDrawableWidth / 2,
+                    mLTPoint.y + mControllerDrawableHeight / 2);
             controlDrawable.draw(canvas);
 
             // 左下角
-            controlDrawable.setBounds(mLBPoint.x - mDrawableWidth / 2,
-                    mLBPoint.y - mDrawableHeight / 2,
-                    mLBPoint.x + mDrawableWidth / 2,
-                    mLBPoint.y + mDrawableHeight / 2);
+            controlDrawable.setBounds(mLBPoint.x - mControllerDrawableWidth / 2,
+                    mLBPoint.y - mControllerDrawableHeight / 2,
+                    mLBPoint.x + mControllerDrawableWidth / 2,
+                    mLBPoint.y + mControllerDrawableHeight / 2);
             controlDrawable.draw(canvas);
 
             // 右上角
-            controlDrawable.setBounds(mRTPoint.x - mDrawableWidth / 2,
-                    mRTPoint.y - mDrawableHeight / 2,
-                    mRTPoint.x + mDrawableWidth / 2,
-                    mRTPoint.y + mDrawableHeight / 2);
+            controlDrawable.setBounds(mRTPoint.x - mControllerDrawableWidth / 2,
+                    mRTPoint.y - mControllerDrawableHeight / 2,
+                    mRTPoint.x + mControllerDrawableWidth / 2,
+                    mRTPoint.y + mControllerDrawableHeight / 2);
             controlDrawable.draw(canvas);
 
             // 右下角
-            controlDrawable.setBounds(mRBPoint.x - mDrawableWidth / 2,
-                    mRBPoint.y - mDrawableHeight / 2,
-                    mRBPoint.x + mDrawableWidth / 2,
-                    mRBPoint.y + mDrawableHeight / 2);
+            controlDrawable.setBounds(mRBPoint.x - mControllerDrawableWidth / 2,
+                    mRBPoint.y - mControllerDrawableHeight / 2,
+                    mRBPoint.x + mControllerDrawableWidth / 2,
+                    mRBPoint.y + mControllerDrawableHeight / 2);
             controlDrawable.draw(canvas);
         }
 
@@ -396,7 +391,7 @@ public class MatrixImageView extends View {
         //绕着图片中心进行旋转
         matrix.postRotate(degree % 360, bitmapWidth/2, bitmapHeight/2);
         //设置画该图片的起始点
-        matrix.postTranslate(offsetX + mDrawableWidth/2, offsetY + mDrawableHeight/2);
+        matrix.postTranslate(offsetX + mControllerDrawableWidth/2, offsetY + mControllerDrawableHeight/2);
 
         adjustLayout();
     }
@@ -430,7 +425,11 @@ public class MatrixImageView extends View {
             case MotionEvent.ACTION_MOVE:
                 mCurMovePointF.set(getTheFirstTouchPoint(event));
 
-                if (mStatus == STATUS_ROTATE_ZOOM) {
+                if (mStatus == STATUS_TRANSFORM) {
+
+                    LogUtils.i("onTouch . . . STATUS_TRANSFORM . . . . ");
+
+                } else if (mStatus == STATUS_ROTATE_ZOOM) {
                     // 第二个触点的坐标
                     PointF touchPoint2 = getTheSecondTouchPoint(event);
                     if (touchPoint2 == null) {
@@ -524,15 +523,17 @@ public class MatrixImageView extends View {
      * @param degree
      */
     private void computeRect(int left, int top, int right, int bottom, float degree){
+
         Point lt = new Point(left, top);
         Point rt = new Point(right, top);
         Point rb = new Point(right, bottom);
         Point lb = new Point(left, bottom);
         Point cp = new Point((left + right) / 2, (top + bottom) / 2);
-        mLTPoint = obtainRoationPoint(cp, lt, degree);
-        mRTPoint = obtainRoationPoint(cp, rt, degree);
-        mRBPoint = obtainRoationPoint(cp, rb, degree);
-        mLBPoint = obtainRoationPoint(cp, lb, degree);
+
+        mLTPoint = obtainRotationPoint(cp, lt, degree);
+        mRTPoint = obtainRotationPoint(cp, rt, degree);
+        mRBPoint = obtainRotationPoint(cp, rb, degree);
+        mLBPoint = obtainRotationPoint(cp, lb, degree);
 
         mControllerPoints.clear();
         mControllerPoints.add(mLTPoint);
@@ -560,10 +561,8 @@ public class MatrixImageView extends View {
         offsetX = mViewWidth / 2 - viewCenterPoint.x;
         offsetY = mViewHeight / 2 - viewCenterPoint.y;
 
-
-
-        int halfDrawableWidth = mDrawableWidth / 2;
-        int halfDrawableHeight = mDrawableHeight /2;
+        int halfDrawableWidth = mControllerDrawableWidth / 2;
+        int halfDrawableHeight = mControllerDrawableHeight /2;
 
         //将Bitmap的四个点的X的坐标移动offsetX + halfDrawableWidth
         mLTPoint.x += (offsetX + halfDrawableWidth);
@@ -625,7 +624,7 @@ public class MatrixImageView extends View {
      * @param degree
      * @return
      */
-    public static Point obtainRoationPoint(Point center, Point source, float degree) {
+    public static Point obtainRotationPoint(Point center, Point source, float degree) {
         //两者之间的距离
         Point disPoint = new Point();
         disPoint.x = source.x - center.x;
@@ -772,8 +771,8 @@ public class MatrixImageView extends View {
      */
     public void setControlDrawable(Drawable drawable) {
         this.controlDrawable = drawable;
-        mDrawableWidth = drawable.getIntrinsicWidth();
-        mDrawableHeight = drawable.getIntrinsicHeight();
+        mControllerDrawableWidth = drawable.getIntrinsicWidth();
+        mControllerDrawableHeight = drawable.getIntrinsicHeight();
         transformDraw(mCurDegree);
     }
 
@@ -857,7 +856,7 @@ public class MatrixImageView extends View {
             //点击的点到控制旋转，缩放点的距离
             float distanceToControl = distance4PointF(touchPoint, controlPointF);
             //如果两者之间的距离小于 控制图标的宽度，高度的最小值，则认为点中了控制图标
-            if(distanceToControl < Math.min(mDrawableWidth/2, mDrawableHeight/2)){
+            if(distanceToControl < Math.min(mControllerDrawableWidth/2, mControllerDrawableHeight/2)){
                 return true;
             }
         }
