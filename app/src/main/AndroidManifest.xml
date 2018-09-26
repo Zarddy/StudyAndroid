@@ -10,13 +10,17 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <activity android:name=".matrix.activity.MatrixActivity">
+        <activity android:name=".matrix.activity.TestGridMatrixActivity">
+        </activity>
+
+        <activity android:name=".matrix.activity.TestMeshActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <activity android:name=".matrix.activity.MatrixActivity"/>
         <activity android:name=".activity.MainActivity"/>
 
     </application>

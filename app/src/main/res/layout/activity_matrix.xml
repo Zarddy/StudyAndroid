@@ -18,8 +18,7 @@
             android:layout_height="wrap_content"
             android:layout_margin="30dp"
             android:background="@drawable/bg"
-            android:src="@drawable/pic1"
-            app:src="@drawable/pic1"
+            android:src="@drawable/light_thumb"
             app:controlDrawable="@drawable/shape_white_circle"/>
 
     </RelativeLayout>
