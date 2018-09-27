@@ -19,6 +19,7 @@
             android:layout_margin="30dp"
             android:background="@drawable/bg"
             android:src="@drawable/light_thumb"
+            app:src="@drawable/light2_thumb"
             app:controlDrawable="@drawable/shape_white_circle"/>
 
     </RelativeLayout>

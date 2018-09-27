@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.PointF;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -30,6 +31,8 @@ public class MeshView extends View {
     private final float[] orig = new float[COUNT * 2];
     private Bitmap bitmap;
     private long baseMesh = 10000 * 100;// 扭曲基数
+
+    private PointF preMovePoint = new PointF();
 
     public MeshView(Context context) {
         super(context);
@@ -68,7 +71,6 @@ public class MeshView extends View {
         }
         //设置背景色
         setBackgroundColor(Color.WHITE);
-
     }
 
     @Override
