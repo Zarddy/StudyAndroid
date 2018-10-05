@@ -7,6 +7,8 @@ import com.zarddy.library.util.LogUtils;
 import com.zarddy.studyandroid.R;
 import com.zarddy.studyandroid.matrix.view.MatrixImageView;
 
+import org.opencv.android.OpenCVLoader;
+
 import butterknife.BindView;
 
 /**
@@ -31,7 +33,7 @@ public class MatrixActivity extends BaseActivity {
 
     @Override
     protected void initView() {
-
+        OpenCVLoader.initDebug();
     }
 
     @Override
@@ -54,6 +56,10 @@ public class MatrixActivity extends BaseActivity {
             case R.id.endChange: // 取消变形
                 endChange();
                 break;
+
+            case R.id.resetAll: // 还原
+                resetAll();
+                break;
         }
     }
 
@@ -73,5 +79,12 @@ public class MatrixActivity extends BaseActivity {
         LogUtils.i("取消变形 . . . . ");
 
         imageView.setTransformable(false);
+    }
+
+    /**
+     * TODO 重置
+     */
+    private void resetAll() {
+        imageView.resetAll();
     }
 }

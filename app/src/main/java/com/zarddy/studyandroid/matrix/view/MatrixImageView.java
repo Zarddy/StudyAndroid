@@ -29,6 +29,8 @@ import android.view.View;
 import com.zarddy.library.util.LogUtils;
 import com.zarddy.library.util.ScreenUtils;
 import com.zarddy.studyandroid.R;
+import com.zarddy.studyandroid.opencv.OpenCVHelper;
+import com.zarddy.studyandroid.opencv.entity.PointMargin;
 
 /**
  * TODO 可以变形的ImageView
@@ -60,10 +62,8 @@ public class MatrixImageView extends View {
      */
     public static final int DEFAULT_FRAME_PADDING = 8;
     public static final int DEFAULT_FRAME_WIDTH = 0;
-    public static final int DEFAULT_FRAME_COLOR = Color.WHITE;
     public static final float DEFAULT_SCALE = 1.0f;
     public static final float DEFAULT_DEGREE = 0;
-    public static final int DEFAULT_CONTROL_LOCATION = RIGHT_TOP;
     public static final boolean DEFAULT_EDITABLE = true;
     public static final int DEFAULT_OTHER_DRAWABLE_WIDTH = 50;
     public static final int DEFAULT_OTHER_DRAWABLE_HEIGHT = 50;
@@ -156,14 +156,8 @@ public class MatrixImageView extends View {
     private int framePadding = DEFAULT_FRAME_PADDING;
 
     /**
-     * 外边框线条粗细, 单位是 dip
-     */
-    private int frameWidth = DEFAULT_FRAME_WIDTH;
-
-    /**
      * 是否处于可以缩放，平移，旋转状态
      */
-    private boolean isEditable = DEFAULT_EDITABLE;
     private boolean isTransformable = true; // 是否可变形
 
     private DisplayMetrics metrics;
@@ -186,31 +180,10 @@ public class MatrixImageView extends View {
     private Rect mLBBounds = new Rect();
     private Rect mRBBounds = new Rect();
 
-
-
-
-
-
-
-
-    //定义两个常量，指定该图片横向、纵向被划分为20格
-    private final int WIDTH = 20;
-    private final int HEIGHT = 20;
-    //计录图片上包含441个顶点
-    private final int COUNT = (WIDTH + 1) * (HEIGHT + 1);
-    //定义一个数组，保存Bitmap上21 * 21个点坐标
-    private final float[] verts = new float[COUNT * 2];
-    //定义一个数组，记录Bitmap上的20 * 20个点经过扭曲后的坐标
-    private final float[] orig = new float[COUNT * 2];
-    private long baseMesh = 10000 * 100;// 扭曲基数
+    private ArrayList<PointMargin> mPointsMargin = new ArrayList<>(); // 四角点间距
 
     private Point curMovingControllerPoint = new Point(); // 当前移动的控制点
     private Point preMovingControllerPoint = new Point();
-
-
-
-
-
 
     public MatrixImageView(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
@@ -233,7 +206,6 @@ public class MatrixImageView extends View {
     private void obtainStyledAttributes(AttributeSet attrs){
         metrics = getContext().getResources().getDisplayMetrics();
         framePadding = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, DEFAULT_FRAME_PADDING, metrics);
-        frameWidth = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, DEFAULT_FRAME_WIDTH, metrics);
 
         TypedArray mTypedArray = getContext().obtainStyledAttributes(attrs,
                 R.styleable.MatrixImageView);
@@ -242,7 +214,6 @@ public class MatrixImageView extends View {
         mBitmap = drawable2Bitmap(srcDrawble);
 
         framePadding = mTypedArray.getDimensionPixelSize(R.styleable.MatrixImageView_framePadding, framePadding);
-        frameWidth = mTypedArray.getDimensionPixelSize(R.styleable.MatrixImageView_frameWidth, frameWidth);
         mScale = mTypedArray.getFloat(R.styleable.MatrixImageView_scale, DEFAULT_SCALE);
         mOriginalDegree = mTypedArray.getFloat(R.styleable.MatrixImageView_degree, DEFAULT_DEGREE);
         mCurDegree = mOriginalDegree;
@@ -250,16 +221,25 @@ public class MatrixImageView extends View {
         isTransformable = mTypedArray.getBoolean(R.styleable.MatrixImageView_editable, DEFAULT_EDITABLE);
 
         mTypedArray.recycle();
-
-        initMesh(mBitmap);
     }
 
     // 初始化控件
     private void init(){
+
+        mMatrix.reset();
+        mCurDegree = 0;
+        mScale = 1f;
+
+        mPointsMargin.clear();
+        mPointsMargin.add(new PointMargin());
+        mPointsMargin.add(new PointMargin());
+        mPointsMargin.add(new PointMargin());
+        mPointsMargin.add(new PointMargin());
+
         mPaint = new Paint();
         mPaint.setAntiAlias(true);
         mPaint.setColor(Color.WHITE); // 边框颜色设为透明
-        mPaint.setStrokeWidth(frameWidth);
+        mPaint.setStrokeWidth(0);
         mPaint.setStyle(Style.STROKE);
 
         if(controlDrawable == null){
@@ -297,27 +277,6 @@ public class MatrixImageView extends View {
                 this.getHeight() - mControllerDrawableHeight,
                 this.getWidth(),
                 this.getHeight());
-    }
-
-    public void initMesh(Bitmap bitmap) {
-        //获取图片宽度，高宽度
-
-        if(mBitmap == null) return;
-        int bitmapWidth = (int)(mBitmap.getWidth() * mScale);
-        int bitmapHeight = (int)(mBitmap.getHeight()* mScale);
-
-        int index = 0;
-        for (int y = 0; y <= HEIGHT; y++){
-            float fy  = bitmapHeight * y / HEIGHT;
-
-            for (int x = 0; x <= WIDTH; x++) {
-                float fx = bitmapWidth * x /WIDTH;
-                //初始化orig, verts两个数组。初始化后orig, verts 两个数组均匀地保存了20 * 21个点的x,y坐标
-                orig[index * 2 + 0] = verts[index * 2 + 0] = fx;
-                orig[index * 2 + 1] = verts[index * 2 + 1] = fy;
-                index += 1;
-            }
-        }
     }
 
     @Override
@@ -415,90 +374,13 @@ public class MatrixImageView extends View {
 
         if(mBitmap == null) return;
 
-        canvas.drawBitmap(mBitmap, mMatrix, mPaint);
-
-
-
-
-// TODO 测试skew
-//        float kx = .2f; // X轴偏移量
-//        float ky = 0f;
-//
-//        int bitmapWidth = (int)(mBitmap.getWidth() * mScale);
-//        int bitmapHeight = (int)(mBitmap.getHeight()* mScale);
-//        float px = bitmapWidth/2;
-//        float py = bitmapHeight/2;
-//
-//        matrix.postSkew(kx, ky, px, py);
-////        matrix.postSkew(kx, ky);
-//
-//        canvas.drawBitmap(mBitmap, matrix, mPaint);
-
-
-//        float kx = .01f; // X轴偏移量
-//        float ky = 0f;
-
-        int bitmapWidth = (int)(mBitmap.getWidth() * mScale);
-        int bitmapHeight = (int)(mBitmap.getHeight()* mScale);
-//        float px = bitmapWidth/2;
-//        float py = bitmapHeight/2;
-
-        float px = 0f;
-        float py = 0f;
-
-
-        float kx = (curMovingControllerPoint.x - preMovingControllerPoint.x) * 1f / bitmapWidth;
-        float ky = (curMovingControllerPoint.y - preMovingControllerPoint.y) * 1f / bitmapHeight;
-
-
-        LogUtils.i("onDraw . . curMovingControllerPoint.x：" + curMovingControllerPoint.x + " . . preMovingControllerPoint.x：" + preMovingControllerPoint.x);
-
-        LogUtils.i("onDraw . . between：" + (curMovingControllerPoint.x - preMovingControllerPoint.x) );
-        LogUtils.i("onDraw . . bitmapWidth：" + bitmapWidth);
-        LogUtils.i("onDraw . . kx：" + kx + " . . ky：" + ky + " . ...  " + (-4/1067));
-
-
-        if (curMovingControllerPoint == mLTPoint) {
-            px = this.getWidth() / 4 * 3;
-            py = this.getHeight() / 4 * 3;
-
-            kx = -kx;
-            ky = -ky;
-
-        } else if (curMovingControllerPoint == mRTPoint) {
-            px = this.getWidth() / 4;
-            py = this.getHeight() / 4 * 3;
-
-            kx = -kx;
-
-        } else if (curMovingControllerPoint == mLBPoint) {
-            px = this.getWidth() / 4 * 3;
-            py = this.getHeight() / 4;
-
-            ky = -ky;
-
-        } else if (curMovingControllerPoint == mRBPoint) {
-            px = this.getWidth() / 4;
-            py = this.getHeight() / 4;
-
-        }
-
-        mMatrix.postSkew(kx, ky, px, py);
-
+        canvas.drawBitmap(OpenCVHelper.warpPerspective(mBitmap, mPointsMargin), mMatrix, mPaint);
         preMovingControllerPoint.set(curMovingControllerPoint.x, curMovingControllerPoint.y);
-
-
-
 
         //处于可编辑状态才画边框和控制图标
         if(isTransformable){
-
-//            canvas.drawBitmapMesh(mBitmap, WIDTH, HEIGHT, verts, 0, null, 0, mPaint);
-
             mPath.reset();
-
             mPath.moveTo(mLTBounds.left, mLTBounds.top);
-//            mPath.moveTo(mLTPoint.x, mLTPoint.y);
             canvas.drawPath(mPath, mPaint);
             //画旋转, 缩放图标
 
@@ -560,10 +442,6 @@ public class MatrixImageView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if(!isEditable){
-            return super.onTouchEvent(event);
-        }
-
         switch (event.getAction() & MotionEvent.ACTION_MASK) {
             // 主点
             case MotionEvent.ACTION_DOWN:
@@ -584,25 +462,42 @@ public class MatrixImageView extends View {
                 break;
 
             case MotionEvent.ACTION_MOVE:
-
-                LogUtils.i("onTouch . . . MotionEvent.ACTION_MOVE . . .  . mStatus. " + mStatus);
-
                 if (mStatus == STATUS_TRANSFORM) {
+                    curMovingControllerPoint.set((int) event.getX(), (int) event.getY());
 
+                    float dx = curMovingControllerPoint.x - preMovingControllerPoint.x;
+                    float dy = curMovingControllerPoint.y - preMovingControllerPoint.y;
+                    int pointLocation = OpenCVHelper.LT_LOCATION;
 
+                    if (curMovingControllerPoint == mLTPoint) {
+                        pointLocation = OpenCVHelper.LT_LOCATION;
 
-                    float x = event.getX();
-                    float y = event.getY();
+                    } else if (curMovingControllerPoint == mLBPoint) {
+                        pointLocation = OpenCVHelper.LB_LOCATION;
 
+                    } else if (curMovingControllerPoint == mRBPoint) {
+                        pointLocation = OpenCVHelper.RB_LOCATION;
 
+                    } else if (curMovingControllerPoint == mRTPoint) {
+                        pointLocation = OpenCVHelper.RT_LOCATION;
+                    }
 
-                    curMovingControllerPoint.set((int) x, (int) y);
+                    LogUtils.i("MotionEvent.ACTION_MOVE . . mCurDegree . . . " + mCurDegree);
+                    LogUtils.i("MotionEvent.ACTION_MOVE . . pointLocation . . . " + pointLocation);
 
-                    LogUtils.i("onTouch . . . STATUS_TRANSFORM . . . .x：" + x + " . . y：" + y);
+                    PointMargin pointMargin = mPointsMargin.get(pointLocation);
+                    pointMargin.setxMargin(pointMargin.getxMargin() + (int)dx);
+                    pointMargin.setyMargin(pointMargin.getyMargin() + (int)dy);
+
+                    if (pointMargin.getxMargin() >= this.getWidth() / 2) {
+                        pointMargin.setxMargin(pointMargin.getxMargin() - (int)dx);
+                    }
+
+                    if (pointMargin.getyMargin() >= this.getHeight() / 2) {
+                        pointMargin.setyMargin(pointMargin.getyMargin() - (int)dy);
+                    }
 
                     invalidate();
-
-
 
                 } else if (mStatus == STATUS_ROTATE_ZOOM) {
                     // 第二个触点的坐标
@@ -684,6 +579,9 @@ public class MatrixImageView extends View {
                     mFirstOriginalPoint.set(firstTouchPoint);
                 }
                 break;
+
+            default:
+                return super.onTouchEvent(event);
         }
         return true;
     }
@@ -937,18 +835,6 @@ public class MatrixImageView extends View {
         transformDraw(mCurDegree);
     }
 
-    public int getFrameWidth() {
-        return frameWidth;
-    }
-
-    public void setFrameWidth(int frameWidth) {
-        if(this.frameWidth == frameWidth)
-            return;
-        this.frameWidth = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, frameWidth, metrics);
-        mPaint.setStrokeWidth(frameWidth);
-        invalidate();
-    }
-
     public PointF getCenterPoint() {
         return mCenterPoint;
     }
@@ -1007,7 +893,6 @@ public class MatrixImageView extends View {
             //如果两者之间的距离小于 控制图标的宽度，高度的最小值，则认为点中了控制图标
             if(distanceToControl < Math.min(mControllerDrawableWidth/2, mControllerDrawableHeight/2)){
                 curMovingControllerPoint = point;
-
                 preMovingControllerPoint.set(point.x, point.y);
 
                 return true;
@@ -1057,5 +942,14 @@ public class MatrixImageView extends View {
         float x2 = event.getX(1) + mViewPaddingLeft;
         float y2 = event.getY(1) + mViewPaddingTop;
         return new PointF(x2, y2);
+    }
+
+    /**
+     * 重置图形
+     */
+    public void resetAll() {
+        init();
+
+        invalidate();
     }
 }
