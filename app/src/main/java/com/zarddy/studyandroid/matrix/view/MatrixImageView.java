@@ -8,17 +8,11 @@ import java.util.List;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
-import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.Paint.Style;
-import android.graphics.Path;
 import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.Rect;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
@@ -26,6 +20,8 @@ import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.zarddy.library.util.BitmapUtils;
+import com.zarddy.library.util.GraphicsUtils;
 import com.zarddy.library.util.LogUtils;
 import com.zarddy.library.util.ScreenUtils;
 import com.zarddy.studyandroid.R;
@@ -39,23 +35,11 @@ import com.zarddy.studyandroid.opencv.entity.PointMargin;
  * https://blog.csdn.net/nsgsbs/article/details/44628311
  */
 public class MatrixImageView extends View {
-    /**
-     * 图片的最大缩放比例
-     */
+
+    /** 图片的最大缩放比例 */
     public static final float MAX_SCALE = 4.0f;
-
-    /**
-     * 图片的最小缩放比例
-     */
+    /** 图片的最小缩放比例 */
     public static final float MIN_SCALE = 0.3f;
-
-    /**
-     * 控制缩放，旋转图标所在四个点得位置
-     */
-    public static final int LEFT_TOP = 0;
-    public static final int RIGHT_TOP = 1;
-    public static final int RIGHT_BOTTOM = 2;
-    public static final int LEFT_BOTTOM = 3;
 
     /**
      * 一些默认的常量
@@ -65,12 +49,8 @@ public class MatrixImageView extends View {
     public static final float DEFAULT_SCALE = 1.0f;
     public static final float DEFAULT_DEGREE = 0;
     public static final boolean DEFAULT_EDITABLE = true;
-    public static final int DEFAULT_OTHER_DRAWABLE_WIDTH = 50;
-    public static final int DEFAULT_OTHER_DRAWABLE_HEIGHT = 50;
 
-    /**
-     * 用于旋转缩放的Bitmap
-     */
+    /** 用于旋转缩放的Bitmap */
     private Bitmap mBitmap;
 
     /** 当前控件的中心坐标，该点的坐标相对于其父类布局 */
@@ -81,30 +61,20 @@ public class MatrixImageView extends View {
      */
     private int mViewWidth, mViewHeight;
 
-    /**
-     * 图片的旋转角度
-     */
+    /** 图片的旋转角度 */
     private float mOriginalDegree = DEFAULT_DEGREE;
     private float mCurDegree = mOriginalDegree; // 当前角度
 
-    /**
-     * 图片的缩放比例
-     */
+    /** 图片的缩放比例 */
     private float mScale = DEFAULT_SCALE;
 
-    /**
-     * 用于缩放，旋转，平移的矩阵
-     */
+    /** 用于缩放，旋转，平移的矩阵 */
     private Matrix mMatrix = new Matrix();
 
-    /**
-     * SingleTouchView距离父类布局的左间距
-     */
+    /** 距离父类布局的左间距 */
     private int mViewPaddingLeft;
 
-    /**
-     * SingleTouchView距离父类布局的上间距
-     */
+    /** 距离父类布局的上间距 */
     private int mViewPaddingTop;
 
     /**
@@ -116,48 +86,28 @@ public class MatrixImageView extends View {
     private Point mLBPoint;
     private List<Point> mControllerPoints = new ArrayList<>();
 
-    /**
-     * 用于缩放，旋转的图标
-     */
+    /** 用于缩放，旋转的图标 */
     private Drawable controlDrawable;
 
-    /**
-     * 缩放，旋转图标的宽和高
-     */
+    /** 缩放，旋转图标的宽和高 */
     private int mControllerDrawableWidth, mControllerDrawableHeight;
 
-    /**
-     * 画外围框的Path
-     */
-    private Path mPath = new Path();
-
-    /**
-     * 画外围框的画笔
-     */
-    private Paint mPaint ;
-
     /** 初始状态 */
-    public static final int STATUS_INIT = 0;
+    private static final int STATUS_INIT = 0;
     /** 拖动状态 */
-    public static final int STATUS_DRAG = 1;
+    private static final int STATUS_DRAG = 1;
     /** 旋转或者放大状态 */
-    public static final int STATUS_ROTATE_ZOOM = 2;
+    private static final int STATUS_ROTATE_ZOOM = 2;
     /** 变形状态 */
-    public static final int STATUS_TRANSFORM = 3;
+    private static final int STATUS_TRANSFORM = 3;
 
-    /**
-     * 当前所处的状态
-     */
+    /** 当前所处的状态 */
     private int mStatus = STATUS_INIT;
 
-    /**
-     * 外边框与图片之间的间距, 单位是dip
-     */
+    /** 外边框与图片之间的间距, 单位是dip */
     private int framePadding = DEFAULT_FRAME_PADDING;
 
-    /**
-     * 是否处于可以缩放，平移，旋转状态
-     */
+    /** 是否处于可以缩放，平移，旋转状态 */
     private boolean isTransformable = true; // 是否可变形
 
     private DisplayMetrics metrics;
@@ -211,7 +161,7 @@ public class MatrixImageView extends View {
                 R.styleable.MatrixImageView);
 
         Drawable srcDrawble = mTypedArray.getDrawable(R.styleable.MatrixImageView_src);
-        mBitmap = drawable2Bitmap(srcDrawble);
+        mBitmap = BitmapUtils.drawable2Bitmap(srcDrawble);
 
         framePadding = mTypedArray.getDimensionPixelSize(R.styleable.MatrixImageView_framePadding, framePadding);
         mScale = mTypedArray.getFloat(R.styleable.MatrixImageView_scale, DEFAULT_SCALE);
@@ -235,12 +185,6 @@ public class MatrixImageView extends View {
         mPointsMargin.add(new PointMargin());
         mPointsMargin.add(new PointMargin());
         mPointsMargin.add(new PointMargin());
-
-        mPaint = new Paint();
-        mPaint.setAntiAlias(true);
-        mPaint.setColor(Color.WHITE); // 边框颜色设为透明
-        mPaint.setStrokeWidth(0);
-        mPaint.setStyle(Style.STROKE);
 
         if(controlDrawable == null){
             controlDrawable = getContext().getResources().getDrawable(R.drawable.shape_white_circle);
@@ -307,66 +251,6 @@ public class MatrixImageView extends View {
         this.layout(newPaddingLeft, newPaddingTop, newPaddingLeft + actualWidth, newPaddingTop + actualHeight);
     }
 
-    /**
-     * 设置旋转图
-     * @param bitmap
-     */
-    public void setImageBitmap(Bitmap bitmap){
-        this.mBitmap = bitmap;
-        transformDraw(mCurDegree);
-    }
-
-    /**
-     * 设置旋转图
-     * @param drawable
-     */
-    public void setImageDrawable(Drawable drawable){
-        this.mBitmap = drawable2Bitmap(drawable);
-        transformDraw(mCurDegree);
-    }
-
-    /**
-     * 从Drawable中获取Bitmap对象
-     * @param drawable
-     * @return
-     */
-    private Bitmap drawable2Bitmap(Drawable drawable) {
-        try {
-            if (drawable == null) {
-                return null;
-            }
-
-            if (drawable instanceof BitmapDrawable) {
-                return ((BitmapDrawable) drawable).getBitmap();
-            }
-
-            int intrinsicWidth = drawable.getIntrinsicWidth();
-            int intrinsicHeight = drawable.getIntrinsicHeight();
-            Bitmap bitmap = Bitmap.createBitmap(
-                    intrinsicWidth <= 0 ? DEFAULT_OTHER_DRAWABLE_WIDTH
-                            : intrinsicWidth,
-                    intrinsicHeight <= 0 ? DEFAULT_OTHER_DRAWABLE_HEIGHT
-                            : intrinsicHeight, Config.ARGB_8888);
-
-            Canvas canvas = new Canvas(bitmap);
-            drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-            drawable.draw(canvas);
-            return bitmap;
-
-        } catch (OutOfMemoryError e) {
-            return null;
-        }
-    }
-
-    /**
-     * 根据id设置旋转图
-     * @param resId
-     */
-    public void setImageResource(int resId){
-        Drawable drawable = getContext().getResources().getDrawable(resId);
-        setImageDrawable(drawable);
-    }
-
     @Override
     protected void onDraw(Canvas canvas) {
         //每次draw之前调整View的位置和大小
@@ -374,16 +258,12 @@ public class MatrixImageView extends View {
 
         if(mBitmap == null) return;
 
-        canvas.drawBitmap(OpenCVHelper.warpPerspective(mBitmap, mPointsMargin), mMatrix, mPaint);
+        canvas.drawBitmap(OpenCVHelper.warpPerspective(mBitmap, mPointsMargin), mMatrix, null);
         preMovingControllerPoint.set(curMovingControllerPoint.x, curMovingControllerPoint.y);
 
         //处于可编辑状态才画边框和控制图标
         if(isTransformable){
-            mPath.reset();
-            mPath.moveTo(mLTBounds.left, mLTBounds.top);
-            canvas.drawPath(mPath, mPaint);
             //画旋转, 缩放图标
-
             int halfControllerDrawableWidth = mControllerDrawableWidth / 2;
             int halfControllerDrawableHeight = mControllerDrawableHeight / 2;
 
@@ -548,7 +428,7 @@ public class MatrixImageView extends View {
                     }
 
                     double radian = Math.acos(cosb);
-                    float newDegree = (float) radianToDegree(radian);
+                    float newDegree = (float) GraphicsUtils.radianToDegree(radian);
 
                     //center -> proMove的向量， 我们使用PointF来实现
                     PointF centerToProMove = new PointF((mSecondOriginalPoint.x - mCenterPoint.x), (mSecondOriginalPoint.y - mCenterPoint.y));
@@ -671,8 +551,9 @@ public class MatrixImageView extends View {
 
     /**
      * 获取旋转某个角度之后的点
-     * @param source
-     * @param degree
+     * @param center 控件中心点
+     * @param source 需要进行计算的点
+     * @param degree 旋转的角度
      * @return
      */
     public static Point obtainRotationPoint(Point center, Point source, float degree) {
@@ -712,22 +593,23 @@ public class MatrixImageView extends View {
             originRadian = originRadian + Math.PI / 2;
 
             // 第三象限
-        } else if (disPoint.x < 0 && disPoint.y < 0) {
+        } else if (disPoint.x < 0) {
             // 计算与x正方向的夹角
             originRadian = Math.asin(Math.abs(disPoint.y) / distance);
             originRadian = originRadian + Math.PI;
-        } else if (disPoint.x >= 0 && disPoint.y < 0) {
+
+        } else {
             // 计算与x正方向的夹角
             originRadian = Math.asin(disPoint.x / distance);
             originRadian = originRadian + Math.PI * 3 / 2;
         }
 
         // 弧度换算成角度
-        originDegree = radianToDegree(originRadian);
+        originDegree = GraphicsUtils.radianToDegree(originRadian);
         resultDegree = originDegree + degree;
 
         // 角度转弧度
-        resultRadian = degreeToRadian(resultDegree);
+        resultRadian = GraphicsUtils.degreeToRadian(resultDegree);
 
         resultPoint.x = (int) Math.round(distance * Math.cos(resultRadian));
         resultPoint.y = (int) Math.round(distance * Math.sin(resultRadian));
@@ -735,24 +617,6 @@ public class MatrixImageView extends View {
         resultPoint.y += center.y;
 
         return resultPoint;
-    }
-
-    /**
-     * 弧度换算成角度
-     *
-     * @return
-     */
-    public static double radianToDegree(double radian) {
-        return radian * 180 / Math.PI;
-    }
-
-    /**
-     * 角度换算成弧度
-     * @param degree
-     * @return
-     */
-    public static double degreeToRadian(double degree) {
-        return degree * Math.PI / 180;
     }
 
     /**
@@ -778,6 +642,33 @@ public class MatrixImageView extends View {
         }
 
         return STATUS_DRAG;
+    }
+
+    /**
+     * 设置旋转图
+     * @param bitmap
+     */
+    public void setImageBitmap(Bitmap bitmap){
+        this.mBitmap = bitmap;
+        transformDraw(mCurDegree);
+    }
+
+    /**
+     * 设置旋转图
+     * @param drawable
+     */
+    public void setImageDrawable(Drawable drawable){
+        this.mBitmap = BitmapUtils.drawable2Bitmap(drawable);
+        transformDraw(mCurDegree);
+    }
+
+    /**
+     * 根据id设置旋转图
+     * @param resId
+     */
+    public void setImageResource(int resId){
+        Drawable drawable = getContext().getResources().getDrawable(resId);
+        setImageDrawable(drawable);
     }
 
     public float getImageDegree() {
@@ -949,7 +840,6 @@ public class MatrixImageView extends View {
      */
     public void resetAll() {
         init();
-
         invalidate();
     }
 }
